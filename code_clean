@@ -1,0 +1,18 @@
+library(readr)
+library(tidyverse)
+library(dados)
+library(skimr)
+df <- seu_arquivo
+head(df)
+str(df) #tipo de cada variavel
+
+summary(df)
+skimr::skim(df)
+is.na(1:21)
+df$ID
+# # Using base R functions to find duplicate values
+# duplicates <- df[duplicated(df), ]
+# duplicate_counts <- table(df[duplicated(df), ])
+# 
+# duplicates
+# duplicate_counts
