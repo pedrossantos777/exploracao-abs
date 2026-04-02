@@ -9,10 +9,9 @@ str(df) #tipo de cada variavel
 summary(df)
 skimr::skim(df)
 is.na(1:21)
-df$ID
-# # Using base R functions to find duplicate values
-# duplicates <- df[duplicated(df), ]
-# duplicate_counts <- table(df[duplicated(df), ])
-# 
-# duplicates
-# duplicate_counts
+
+
+#encontrar duplicados
+df_unico <- df %>% distinct()
+
+head(df_unico)
