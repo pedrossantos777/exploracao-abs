@@ -14,4 +14,5 @@ is.na(1:21)
 #encontrar duplicados
 df_unico <- df %>% distinct()
 
-head(df_unico)
+#verificar dados nulos
+colSums(is.na(df_unico))
