@@ -1,6 +1,8 @@
 ---
 title: "exploratoria"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 date: "2026-04-02"
 ---
 
@@ -194,5 +196,123 @@ df %>%
 # - neoplasias
 # - doenças na pele
 # - sistema nervoso
+
+```
+```{r}
+
+#nova coluna dummy para saber quem faltou mais de um dia
+df <-  df  |>  mutate(faltou_mais_de_dia = case_when(Absenteeism_time_in_hours > 7.9 ~ 1, 
+                                              TRUE ~ 0))
+```
+
+```{r}
+skim(df$Distance_from_Residence_to_Work)
+#distancia média é 29
+#1/4 da diatancia é 16
+#1/2 da distancia é 26
+#3/4 da distancia é 49
+
+#perto: 0 até 16 é perto
+#medio: 16 até 48 é médio
+#longe: acima de 48
+
+```
+```{r}
+df %>% count(Son, sort = TRUE)
+#idade média de quem mais falta é 36 anos
+#educação de quem mais falta é ensino médio
+
+skim(df$Service_time)
+df %>% count(Service_time, sort = TRUE)
+
+```
+```{r}
+
+#criação de variaveis dummy
+#se nao tem graduação = 1, caso contrario = 0
+df <-  df  |>  mutate(nao_tem_graduação = case_when(Education < 2 ~ 1, 
+                                              TRUE ~ 0))
+```
+```{r}
+
+#se mora longe do trabalho = 1, se mora perto - 0
+#mora perto < distancia media (29)
+#mora longe > distancia media 
+
+df <-  df  |>  mutate(mora_longe= case_when(Distance_from_Residence_to_Work > 29 ~ 1, 
+                                              TRUE ~ 0))
+
+#se tem filho ou nao tem filho
+df <-  df  |>  mutate(tem_filho = case_when(Son > 0 ~ 1, 
+                                              TRUE ~ 0))
+
+#muita carga ou pouca carga de serviço - corrigir outliers
+df <-  df  |>  mutate(sobrecarga = case_when(Work_load_Average_day > 272000 ~ 1, 
+                                              TRUE ~ 0))
+```
+
+```{r}
+
+#quem tem filho passou mais tempo em media fora do serviço
+df %>%
+  group_by(tem_filho) %>%
+  summarise(
+    media_abstencao = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(media_abstencao))
+```
+
+```{r}
+
+df %>%
+  group_by(mora_longe) %>%
+  summarise(
+    media_abstencao = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(mora_longe))
+
+#quem mora longe tem em media menos tempo de abstenção do que quem mora perto 
+```
+```{r}
+
+
+df %>%
+  group_by(nao_tem_graduação) %>%
+  summarise(
+    media_abstencao = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(nao_tem_graduação))
+
+# a media de abstenção de quem nao tem graduação é maior do que a media de quem tem
+
+
+```
+```{r}
+
+
+df %>%
+  group_by(nao_tem_graduação) %>%
+  summarise(
+    media_abstencao = mean(Work_load_Average_day, na.rm = TRUE)) |> 
+  arrange(desc(nao_tem_graduação))
+
+# a carga de trabalho entre quem nao tem graduação é maior do que a media de quem tem
+
+```
+
+```{r}
+df %>% count(Son, sort = TRUE)
+#idade média de quem mais falta é 36 anos
+#educação de quem mais falta é ensino médio
+
+skim(df$Work_load_Average_day)
+```
+
+```{r}
+
+df %>%
+  group_by(sobrecarga) %>%
+  summarise(
+    media_abstencao = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(sobrecarga))
+
+#media maior entre quem tem sobrecarga, porem melhor corrigir os outliers
 ```
 
