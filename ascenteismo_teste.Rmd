@@ -1,0 +1,198 @@
+---
+title: "exploratoria"
+output: html_document
+date: "2026-04-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(readr)
+library(tidyverse)
+library(dados)
+library(skimr)
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+df <- seu_arquivo_1_
+head(df)
+
+str(df) #tipo de cada variavel
+
+summary(df)
+skimr::skim(df)
+is.na(1:21)
+
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+
+#encontrar duplicados
+df <- df %>% distinct()
+
+#verificar dados nulos
+colSums(is.na(df))
+
+```
+
+```{r}
+#contar valores zerados do absteeism time in hours
+
+
+df %>% count(Absenteeism_time_in_hours, sort = TRUE)
+head(df)
+
+```
+
+
+```{r}
+#44 valores zerados, vamos substituir os valores zerados pela média dos valoers
+#substituir pela média
+df <- df %>%
+  mutate(
+    Absenteeism_time_in_hours = ifelse(
+      Absenteeism_time_in_hours == 0, 
+      mean(Absenteeism_time_in_hours[Absenteeism_time_in_hours != 0], na.rm = TRUE), 
+      Absenteeism_time_in_hours
+    ),
+    Absenteeism_time_in_hours = round(Absenteeism_time_in_hours, 1)
+  )
+
+df %>% count(Absenteeism_time_in_hours, sort = TRUE)
+
+
+```
+```{r}
+
+df %>% count(Month_of_absence
+             )
+df |> filter (Month_of_absence == 0)
+
+#substituir linha id 4 month 0 day 3 season 1 por mes 3 (moda que mais aparece)
+#substituir linha id 8 month 0 season 2 por mes 4
+#substituir linha id 35 month 0 season 3 por mes 7
+
+df <- df %>%
+  mutate(Month_of_absence = case_when(
+    ID == 4  & Month_of_absence == 0 ~ 3,
+    ID == 8  & Month_of_absence == 0 ~ 4,
+    ID == 35 & Month_of_absence == 0 ~ 7,
+    TRUE ~ Month_of_absence  # Mantém o valor original para todo o resto
+  ))
+
+
+
+```
+
+```{r}
+#verificar reason for absence = 0
+df |> filter (Reason_for_absence == 0)
+```
+
+```{r}
+#tem algum erro na relação entre estações do ano e meses de abstenção. acho que está no padrao dos eua
+df |> group_by(Month_of_absence, Seasons) |>
+    summarise(sum())
+```
+```{r}
+#verificar possiveis outliers e provaveis variaveis
+
+head(df)
+#custo com transporte
+#distancia do trabalho
+#tempo de serviço
+#idade
+#tempo medio de carga laboral
+#meta atingida
+#falha disciplinar
+#nivel de educação
+#tempo de abstenção > 8 horas - um dia de trabalho
+
+#-----------------
+  
+#groupby distancia e tempo de abstençao
+#tempo de serviço e abstenção
+#idade e tempo de abstenção
+#----------------------------------
+#verificar as pessoas que receberam falta disciplinar
+#criar coluna:
+#abtenção de mais de um dia de trabalho > 8 horas
+#
+  
+
+```
+
+```{r}
+df_indisciplina <-  df |> 
+  filter(Disciplinary_failure == TRUE)
+
+```
+
+```{r}
+df_indisciplina %>% count(Month_of_absence, sort = TRUE
+             
+             )
+
+#dentre os que faltaram o trabalho sem justificativa, os meses que mais ouve falta foram nos meses de setembro, outubro e maio
+
+```
+```{r}
+df_indisciplina |> count(Day_of_the_week, sort = TRUE)
+#os dias que as pessoas com indisciplina mais faltam são Tuesday (terça), Wednesday (quarta) e Thrusday (quinta)
+```
+
+```{r}
+
+df_disciplina <-  df |> 
+  filter(Disciplinary_failure == FALSE)
+df_disciplina |>  count(Month_of_absence, sort = TRUE)
+df_disciplina |>  count(Day_of_the_week, sort = TRUE)
+#os meses que as pessoas sem falta de disciplina mais faltam são março, julho e fevereiro
+#os dias que as pessoas sem falta de disciplina faltam sao segunda, terça e quarta
+```
+
+```{r}
+df %>%
+  group_by(Reason_for_absence) %>%
+  summarise(
+    Media_Carga_Horaria = mean(Work_load_Average_day, na.rm = TRUE)) |> 
+  arrange(desc(Media_Carga_Horaria))
+
+
+#principais CIDs por carga horaria
+# 17 - malformações congenis e anomalias cromossomicas
+# 3 - doenças de sangue
+# 12 - doenças na pele
+# 13 - doenças no sistema osteomuscular
+```
+
+```{r}
+df %>%
+  group_by(Reason_for_absence) %>%
+  summarise(
+    Media_Tempo_Fora = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(Media_Tempo_Fora))
+
+
+# - sistema circulatorio
+# - neoplasias
+# - doenças na pele
+# - sistema nervoso
+```
+
