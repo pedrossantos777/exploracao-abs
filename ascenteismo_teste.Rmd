@@ -29,8 +29,8 @@ library(skimr)
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
-df <- seu_arquivo_1_
-head(df)
+url <- "https://raw.githubusercontent.com/pedrossantos777/exploracao-abs/refs/heads/main/seu_arquivo.csv"
+df <- read.csv(url)
 
 str(df) #tipo de cada variavel
 
