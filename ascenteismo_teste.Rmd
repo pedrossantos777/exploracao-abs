@@ -16,19 +16,21 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
+```{r }
 library(readr)
 library(tidyverse)
 library(dados)
 library(skimr)
-
+library(MASS)
+library(outliers)
+library(forecast)
 ```
 
 ## Including Plots
 
 You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
+```{r }
 url <- "https://raw.githubusercontent.com/pedrossantos777/exploracao-abs/refs/heads/main/seu_arquivo.csv"
 df <- read.csv(url)
 
@@ -64,7 +66,7 @@ head(df)
 
 
 ```{r}
-#44 valores zerados, vamos substituir os valores zerados pela média dos valoers
+#44 valores zerados, vamos substituir os valores zerados pela média dos valores
 #substituir pela média
 df <- df %>%
   mutate(
@@ -82,8 +84,7 @@ df %>% count(Absenteeism_time_in_hours, sort = TRUE)
 ```
 ```{r}
 
-df %>% count(Month_of_absence
-             )
+df %>% count(Month_of_absence)
 df |> filter (Month_of_absence == 0)
 
 #substituir linha id 4 month 0 day 3 season 1 por mes 3 (moda que mais aparece)
@@ -314,5 +315,196 @@ df %>%
   arrange(desc(sobrecarga))
 
 #media maior entre quem tem sobrecarga, porem melhor corrigir os outliers
+```
+
+```{r}
+#verificar outliers de 
+#Work_load_Average_day
+#Absenteeism_time_in_hours
+#Distance_from_Residence_to_Work
+#Service_time
+
+
+skimr::skim(df)
+summary(df$Work_load_Average_day)
+summary(df$Absenteeism_time_in_hours)
+summary(df$Distance_from_Residence_to_Work)
+summary(df$Service_time)
+
+
+
+```
+
+
+```{r}
+#verificar outliers de Work_load_Average_day
+
+ggplot(df) +
+  aes(x = Work_load_Average_day) +
+  geom_histogram(bins = 30L, color = "red", fill = "#0c4c8a") +
+  
+  theme_minimal()
+
+ggsave("hist_outliers_Work_load_Average_day.png")
+
+ggplot(df) +
+  aes(x = "", y = Work_load_Average_day) +
+  geom_boxplot(fill = "blue") +
+  theme_minimal()
+
+
+ggsave("boxplot_outliers_Work_load_Average_day.png")
+
+
+
+
+```
+
+```{r}
+#verificar outliers de Absenteeism_time_in_hours
+
+ggplot(df) +
+  aes(x = Absenteeism_time_in_hours) +
+  geom_histogram(bins = 30L, color = "red", fill = "#0c4c8a") +
+  
+  theme_minimal()
+
+ggsave("hist_outliers_Absenteeism_time_in_hours.png")
+
+ggplot(df) +
+  aes(x = "", y = Absenteeism_time_in_hours) +
+  geom_boxplot(fill = "blue") +
+  theme_minimal()
+
+
+ggsave("boxplot_outliers_Absenteeism_time_in_hours.png")
+```
+
+
+```{r}
+#verificar outliers de Distance_from_Residence_to_Work
+
+ggplot(df) +
+  aes(x = Distance_from_Residence_to_Work) +
+  geom_histogram(bins = 30L, color = "red", fill = "#0c4c8a") +
+  
+  theme_minimal()
+
+ggsave("hist_outliers_Distance_from_Residence_to_Work.png")
+
+ggplot(df) +
+  aes(x = "", y = Distance_from_Residence_to_Work) +
+  geom_boxplot(fill = "blue") +
+  theme_minimal()
+
+
+ggsave("boxplot_outliers_Distance_from_Residence_to_Work.png")
+
+
+
+
+```
+
+
+```{r}
+#verificar outliers de Service_time
+
+ggplot(df) +
+  aes(x = Service_time) +
+  geom_histogram(bins = 30L, color = "red", fill = "#0c4c8a") +
+  
+  theme_minimal()
+
+ggsave("hist_outliers_Service_time.png")
+
+ggplot(df) +
+  aes(x = "", y = Service_time) +
+  geom_boxplot(fill = "blue") +
+  theme_minimal()
+
+
+ggsave("boxplot_outliers_Service_time.png")
+
+
+```
+
+
+```{r}
+
+#verificar outliers de 
+#Work_load_Average_day - z score
+#Distance_from_Residence_to_Work - box cox
+#Service_time - z score
+
+
+
+#tratamento dos outliers Service_time - z score
+  
+
+# A função boxcox precisa de valores positivos
+# Vamos usar o pacote 'forecast' que facilita a aplicação direta
+
+
+# Encontra o lambda ideal e aplica a transformação
+lambda <- BoxCox.lambda(df$Service_time)
+df$Service_time_boxcox <- BoxCox(df$Service_time, lambda)
+
+# Verifique o resultado
+hist(df$Service_time_boxcox, main = paste("Lambda:", round(lambda, 2)))
+
+
+
+
+
+```
+
+```{r}
+
+#verificar outliers de 
+#Work_load_Average_day - z score
+#Distance_from_Residence_to_Work - box cox - ok
+#Service_time - box cox - ok
+
+
+
+#tratamento dos outliers Distance_from_Residence_to_Work - boxcox
+  
+
+# A função boxcox precisa de valores positivos
+# Vamos usar o pacote 'forecast' que facilita a aplicação direta
+
+
+# Encontra o lambda ideal e aplica a transformação
+lambda <- BoxCox.lambda(df$Distance_from_Residence_to_Work)
+df$Distance_from_Residence_to_Work_boxcox <- BoxCox(df$Distance_from_Residence_to_Work, lambda)
+
+# Verifique o resultado
+hist(df$Distance_from_Residence_to_Work_boxcox, main = paste("Lambda:", round(lambda, 2)))
+
+
+```
+
+```{r}
+#verificar outliers de 
+#Work_load_Average_day - box cox
+#Distance_from_Residence_to_Work - box cox - ok
+#Service_time - box cox - ok
+
+
+
+#tratamento dos outliers Work_load_Average_day - boxcox
+  
+
+# A função boxcox precisa de valores positivos
+# Vamos usar o pacote 'forecast' que facilita a aplicação direta
+
+
+# Encontra o lambda ideal e aplica a transformação
+lambda <- BoxCox.lambda(df$Work_load_Average_day)
+df$Work_load_Average_day_boxcox <- BoxCox(df$Work_load_Average_day, lambda)
+
+# Verifique o resultado
+hist(df$Work_load_Average_day_boxcox, main = paste("Lambda:", round(lambda, 2)))
+
 ```
 
