@@ -1,21 +1,3 @@
----
-title: "exploratoria"
-output:
-  pdf_document: default
-  html_document: default
-date: "2026-04-02"
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
 ```{r }
 library(readr)
 library(tidyverse)
@@ -23,7 +5,13 @@ library(dados)
 library(skimr)
 library(MASS)
 library(outliers)
+library(janitor)
 library(forecast)
+library (abjData)
+library (broom)
+library (car)
+library (report)
+library (stargazer)
 ```
 
 ## Including Plots
@@ -148,55 +136,26 @@ df_indisciplina <-  df |>
 ```
 
 ```{r}
-df_indisciplina %>% count(Month_of_absence, sort = TRUE
-             
-             )
+df_indisciplina$Month_of_absence <- factor(df_indisciplina$Month_of_absence, 
+                                          levels = 1:12,
+                                          labels = c("Jan", "Fev", "Mar", "Abr", "Mai", "Jun", 
+                                                     "Jul", "Ago", "Set", "Out", "Nov", "Dez"))
+#dentre os que faltaram o trabalho sem justificativa, os meses que mais houve falta foram nos meses de setembro, outubro e maio
 
-#dentre os que faltaram o trabalho sem justificativa, os meses que mais ouve falta foram nos meses de setembro, outubro e maio
-
-```
-```{r}
-df_indisciplina |> count(Day_of_the_week, sort = TRUE)
-#os dias que as pessoas com indisciplina mais faltam são Tuesday (terça), Wednesday (quarta) e Thrusday (quinta)
 ```
 
 ```{r}
-
 df_disciplina <-  df |> 
   filter(Disciplinary_failure == FALSE)
 df_disciplina |>  count(Month_of_absence, sort = TRUE)
-df_disciplina |>  count(Day_of_the_week, sort = TRUE)
+
+
+df_disciplina$Month_of_absence <- factor(df_disciplina$Month_of_absence, 
+                                          levels = 1:12,
+                                          labels = c("Jan", "Fev", "Mar", "Abr", "Mai", "Jun", 
+                                                     "Jul", "Ago", "Set", "Out", "Nov", "Dez"))
 #os meses que as pessoas sem falta de disciplina mais faltam são março, julho e fevereiro
 #os dias que as pessoas sem falta de disciplina faltam sao segunda, terça e quarta
-```
-
-```{r}
-df %>%
-  group_by(Reason_for_absence) %>%
-  summarise(
-    Media_Carga_Horaria = mean(Work_load_Average_day, na.rm = TRUE)) |> 
-  arrange(desc(Media_Carga_Horaria))
-
-
-#principais CIDs por carga horaria
-# 17 - malformações congenis e anomalias cromossomicas
-# 3 - doenças de sangue
-# 12 - doenças na pele
-# 13 - doenças no sistema osteomuscular
-```
-
-```{r}
-df %>%
-  group_by(Reason_for_absence) %>%
-  summarise(
-    Media_Tempo_Fora = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
-  arrange(desc(Media_Tempo_Fora))
-
-
-# - sistema circulatorio
-# - neoplasias
-# - doenças na pele
-# - sistema nervoso
 
 ```
 ```{r}
@@ -205,30 +164,20 @@ df %>%
 df <-  df  |>  mutate(faltou_mais_de_dia = case_when(Absenteeism_time_in_hours > 7.9 ~ 1, 
                                               TRUE ~ 0))
 ```
-
 ```{r}
-skim(df$Distance_from_Residence_to_Work)
-#distancia média é 29
-#1/4 da diatancia é 16
-#1/2 da distancia é 26
-#3/4 da distancia é 49
+ggplot(df_indisciplina, aes(x = Month_of_absence)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Abstenção por mês",
+  subtitle = "Empregados enquadrados por indisciplina"
+)
 
-#perto: 0 até 16 é perto
-#medio: 16 até 48 é médio
-#longe: acima de 48
+ggsave("abstencao_indisciplina_mes.png")
 
 ```
+
+
 ```{r}
-df %>% count(Son, sort = TRUE)
-#idade média de quem mais falta é 36 anos
-#educação de quem mais falta é ensino médio
-
-skim(df$Service_time)
-df %>% count(Service_time, sort = TRUE)
-
-```
-```{r}
-
 #criação de variaveis dummy
 #se nao tem graduação = 1, caso contrario = 0
 df <-  df  |>  mutate(nao_tem_graduação = case_when(Education < 2 ~ 1, 
@@ -251,6 +200,166 @@ df <-  df  |>  mutate(tem_filho = case_when(Son > 0 ~ 1,
 df <-  df  |>  mutate(sobrecarga = case_when(Work_load_Average_day > 272000 ~ 1, 
                                               TRUE ~ 0))
 ```
+```
+
+
+```{r}
+df1 = pedro
+df_indisciplina |> count(Day_of_the_week, sort = TRUE)
+#osdias que as pessoas com indisciplina mais faltam são Tuesday (terça), Wednesday (quarta) e Thrusday (quinta)
+```
+```
+```{r}
+
+```
+
+```{r}
+df |> count(Reason_for_absence, sort = TRUE)
+```
+
+```{r}
+
+
+ggplot(df, aes(x = Reason_for_absence)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Reason_for_absence",
+)
+
+ggsave("Contagem_motivos_abstencao.png")
+```
+
+
+```{r}
+ggplot(df_indisciplina, aes(x = Month_of_absence)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Abstenção por mês",
+  subtitle = "Empregados enquadrados por indisciplina"
+)
+
+ggsave("abstencao_indisciplina_mes.png")
+```
+
+
+```{r}
+ggplot(df_disciplina, aes(x = Month_of_absence)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Abstenção por mês",
+  subtitle = "Empregados com justificativa"
+)
+
+ggsave("abstencao_disciplina_mes.png")
+```
+```{r}
+df$Reason_for_absence <- factor(df$Reason_for_absence, 
+                                          levels = 1:28,
+                                          labels = c("Certain infectious and parasitic diseases", "Neoplasms", "Diseases of the blood", "Endocrine", "Mental and behavioural disorders", "nervous system", 
+                                                     "eye and adnexa", " ear and mastoid process", "circulatory system", "respiratory system", "digestive system", "skin and subcutaneous tissue", "musculoskeletal system", "genitourinary system", "Pregnancy", "perinatal period",
+"Congenital malformations",  "abnormal clinical and laboratory findings", "Injury", " External causes of morbidity and mortality",
+"Factors influencing health status and contact with health services", "patient follow-up", "medical consultation", "blood donation",
+"laboratory examination", "unjustified absence", "physiotherapy", "dental consultation"
+))
+```
+
+
+```{r}
+df_cid_carga <-  df %>%
+  group_by(Reason_for_absence) %>%
+  summarise(
+    Media_Carga_Horaria = mean(Work_load_Average_day, na.rm = TRUE)) |> 
+  arrange(desc(Media_Carga_Horaria))
+
+
+#quais os principais CIDs por pessoas com mais carga horaria de serviço?
+
+# 17 - malformações congenis e anomalias cromossomicas
+# 3 - doenças de sangue
+# 12 - doenças na pele
+# 13 - doenças no sistema osteomuscular
+
+#CIDS que sugerem aspectos de desgaste físico e stress - 
+
+```
+```{r}
+ggplot(df_cid_carga, aes(x = reorder(Reason_for_absence, -Media_Carga_Horaria), y = Media_Carga_Horaria)) +
+  geom_col(fill = "coral") +
+  labs(
+    title = "Média de Carga Horária por Motivo de Ausência",
+    x = "Motivo (CID)",
+    y = "Média de Carga Horária Diária"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave("media_disciplina_carga_horaria.png")
+```
+
+```{r}
+df_tempo_fora <- df %>%
+  group_by(Reason_for_absence) %>%
+  summarise(
+    Media_Tempo_Fora = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(Media_Tempo_Fora))
+
+
+# - sistema circulatorio
+# - neoplasias
+# - doenças na pele
+# - sistema nervoso
+
+```
+
+```{r}
+ggplot(df_tempo_fora, aes(x = reorder(Reason_for_absence, Media_Tempo_Fora), y = Media_Tempo_Fora)) +
+  geom_col(fill = "indianred") +
+  coord_flip() + # Inverte para horizontal, facilitando a leitura dos nomes
+  labs(
+    title = "Média de Horas de Ausência por Motivo",
+    subtitle = "Ordenado pelos motivos com maior tempo de afastamento",
+    x = "Motivo da Ausência (CID)",
+    y = "Média de Horas"
+  ) +
+theme_minimal() +
+  theme(
+    # Alinha título e subtítulo à borda esquerda de todo o gráfico (não só do painel)
+    plot.title.position = "plot", 
+    # Garante que o alinhamento horizontal (hjust) seja 0 (esquerda)
+    plot.title = element_text(hjust = 0, face = "bold"),
+    plot.subtitle = element_text(hjust = 0)
+  )
+
+ggsave("horas_ausencia_por_motivo.png")
+```
+
+
+
+
+
+
+
+```{r}
+skim(df$Distance_from_Residence_to_Work)
+#distancia média é 29
+#1/4 da diatancia é 16
+#1/2 da distancia é 26
+#3/4 da distancia é 49
+
+#perto: 0 até 16 é perto
+#medio: 16 até 48 é médio
+#longe: acima de 48
+
+```
+```{r}
+df %>% count(Son, sort = TRUE)
+#idade média de quem mais falta é 36 anos
+#educação de quem mais falta é ensino médio
+
+skim(df$Service_time)
+df %>% count(Service_time, sort = TRUE)
+
+```
+
 
 ```{r}
 
@@ -260,7 +369,37 @@ df %>%
   summarise(
     media_abstencao = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
   arrange(desc(media_abstencao))
+
+
 ```
+
+
+
+```{r}
+ggplot(df, aes(x = tem_filho)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Astenção entre quem possui filhos ou não",
+)
+
+
+```
+```{r}
+ggplot(df, aes(x = factor(tem_filho), fill = factor(tem_filho))) + 
+  geom_bar() +
+  labs(
+    title = "Abstenção entre quem possui filhos ou não",
+    x = "Possui filhos? (0 = Não, 1 = Sim)",
+    y = "Total de Ausências",
+    fill = "Tem filho?"
+  ) +
+  theme_minimal() +
+  theme(plot.title.position = "plot")
+
+
+ggsave("abstencao_por_filho.png")
+```
+
 
 ```{r}
 
@@ -272,6 +411,23 @@ df %>%
 
 #quem mora longe tem em media menos tempo de abstenção do que quem mora perto 
 ```
+```{r}
+ggplot(df, aes(x = factor(mora_longe), fill = factor(mora_longe))) + 
+  geom_bar() +
+  labs(
+    title = "Abstenção entre quem mora longe ou não",
+    x = "mora longe do trabalho?? (0 = Não, 1 = Sim)",
+    y = "Total de Ausências",
+    fill = "mora longe?"
+  ) +
+  theme_minimal() +
+  theme(plot.title.position = "plot")
+
+
+ggsave("abstencao_mora_longe.png")
+```
+
+
 ```{r}
 
 
@@ -285,6 +441,27 @@ df %>%
 
 
 ```
+
+
+```{r}
+ggplot(df, aes(x = factor(nao_tem_graduação), fill = factor(nao_tem_graduação))) + 
+  geom_bar() +
+  labs(
+    title = "Abstenção por escolaridade",
+    x = "tem graduação? (1 = Não, 0 = Sim)",
+    y = "Total de Ausências",
+    fill = "tem graduação?"
+  ) +
+  theme_minimal() +
+  theme(plot.title.position = "plot")
+
+
+ggsave("abstencao_escolaridade.png")
+```
+
+
+
+
 ```{r}
 
 
@@ -297,6 +474,12 @@ df %>%
 # a carga de trabalho entre quem nao tem graduação é maior do que a media de quem tem
 
 ```
+
+```{r}
+
+
+```
+
 
 ```{r}
 df %>% count(Son, sort = TRUE)
@@ -508,3 +691,12 @@ hist(df$Work_load_Average_day_boxcox, main = paste("Lambda:", round(lambda, 2)))
 
 ```
 
+```{r}
+
+# Agora os nomes ficaram todos em minúsculo e sem sujeira. 
+# O comando agora deve ser:
+df |> 
+  ggplot(aes(x = age, y = absenteeism_time_in_hours)) +
+  geom_point(alpha = 0.5) +
+  theme_light()
+```
