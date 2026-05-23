@@ -1,0 +1,833 @@
+---
+title: "abs_modelo"
+output: html_document
+date: "2026-05-23"
+---
+
+```{r }
+library(readr)
+library(tidyverse)
+library(dados)
+library(skimr)
+library(MASS)
+library(outliers)
+library(janitor)
+library(forecast)
+library (abjData)
+library (broom)
+library (car)
+library (report)
+library (stargazer)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r }
+url <- "C:/Users/Espada/Downloads/seu_arquivo.csv"
+df <- read.csv(url)
+
+str(df) #tipo de cada variavel
+
+summary(df)
+skimr::skim(df)
+is.na(1:21)
+
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+
+#encontrar duplicados
+df <- df %>% distinct()
+
+#verificar dados nulos
+colSums(is.na(df))
+
+```
+
+```{r}
+#contar valores zerados do absteeism time in hours
+
+
+df %>% count(Absenteeism_time_in_hours, sort = TRUE)
+head(df)
+
+```
+
+
+```{r}
+#44 valores zerados, vamos substituir os valores zerados pela média dos valores
+#substituir pela média
+df <- df %>%
+  mutate(
+    Absenteeism_time_in_hours = ifelse(
+      Absenteeism_time_in_hours == 0, 
+      mean(Absenteeism_time_in_hours[Absenteeism_time_in_hours != 0], na.rm = TRUE), 
+      Absenteeism_time_in_hours
+    ),
+    Absenteeism_time_in_hours = round(Absenteeism_time_in_hours, 1)
+  )
+
+df %>% count(Absenteeism_time_in_hours, sort = TRUE)
+
+
+```
+```{r}
+
+df %>% count(Month_of_absence)
+df |> filter (Month_of_absence == 0)
+
+#substituir linha id 4 month 0 day 3 season 1 por mes 3 (moda que mais aparece)
+#substituir linha id 8 month 0 season 2 por mes 4
+#substituir linha id 35 month 0 season 3 por mes 7
+
+df <- df %>%
+  mutate(Month_of_absence = case_when(
+    ID == 4  & Month_of_absence == 0 ~ 3,
+    ID == 8  & Month_of_absence == 0 ~ 4,
+    ID == 35 & Month_of_absence == 0 ~ 7,
+    TRUE ~ Month_of_absence  # Mantém o valor original para todo o resto
+  ))
+
+
+
+```
+
+```{r}
+#verificar reason for absence = 0
+df |> filter (Reason_for_absence == 0)
+```
+
+```{r}
+#tem algum erro na relação entre estações do ano e meses de abstenção. acho que está no padrao dos eua
+df |> group_by(Month_of_absence, Seasons) |>
+    summarise(sum())
+```
+```{r}
+#verificar possiveis outliers e provaveis variaveis
+
+head(df)
+#custo com transporte
+#distancia do trabalho
+#tempo de serviço
+#idade
+#tempo medio de carga laboral
+#meta atingida
+#falha disciplinar
+#nivel de educação
+#tempo de abstenção > 8 horas - um dia de trabalho
+
+#-----------------
+  
+#groupby distancia e tempo de abstençao
+#tempo de serviço e abstenção
+#idade e tempo de abstenção
+#----------------------------------
+#verificar as pessoas que receberam falta disciplinar
+#criar coluna:
+#abtenção de mais de um dia de trabalho > 8 horas
+#
+  
+
+```
+
+```{r}
+df_indisciplina <-  df |> 
+  filter(Disciplinary_failure == TRUE)
+
+```
+
+```{r}
+df_indisciplina$Month_of_absence <- factor(df_indisciplina$Month_of_absence, 
+                                          levels = 1:12,
+                                          labels = c("Jan", "Fev", "Mar", "Abr", "Mai", "Jun", 
+                                                     "Jul", "Ago", "Set", "Out", "Nov", "Dez"))
+#dentre os que faltaram o trabalho sem justificativa, os meses que mais houve falta foram nos meses de setembro, outubro e maio
+
+```
+
+```{r}
+df_disciplina <-  df |> 
+  filter(Disciplinary_failure == FALSE)
+df_disciplina |>  count(Month_of_absence, sort = TRUE)
+
+
+df_disciplina$Month_of_absence <- factor(df_disciplina$Month_of_absence, 
+                                          levels = 1:12,
+                                          labels = c("Jan", "Fev", "Mar", "Abr", "Mai", "Jun", 
+                                                     "Jul", "Ago", "Set", "Out", "Nov", "Dez"))
+#os meses que as pessoas sem falta de disciplina mais faltam são março, julho e fevereiro
+#os dias que as pessoas sem falta de disciplina faltam sao segunda, terça e quarta
+
+```
+```{r}
+
+#nova coluna dummy para saber quem faltou mais de um dia
+df <-  df  |>  mutate(faltou_mais_de_dia = case_when(Absenteeism_time_in_hours > 7.9 ~ 1, 
+                                              TRUE ~ 0))
+```
+```{r}
+ggplot(df_indisciplina, aes(x = Month_of_absence)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Abstenção por mês",
+  subtitle = "Empregados enquadrados por indisciplina"
+)
+
+ggsave("abstencao_indisciplina_mes.png")
+
+```
+
+
+```{r}
+#criação de variaveis dummy
+#se nao tem graduação = 1, caso contrario = 0
+df <-  df  |>  mutate(nao_tem_graduação = case_when(Education < 2 ~ 1, 
+                                              TRUE ~ 0))
+```
+```{r}
+
+#se mora longe do trabalho = 1, se mora perto - 0
+#mora perto < distancia media (29)
+#mora longe > distancia media 
+
+df <-  df  |>  mutate(mora_longe= case_when(Distance_from_Residence_to_Work > 29 ~ 1, 
+                                              TRUE ~ 0))
+
+#se tem filho ou nao tem filho
+df <-  df  |>  mutate(tem_filho = case_when(Son > 0 ~ 1, 
+                                              TRUE ~ 0))
+
+#muita carga ou pouca carga de serviço - corrigir outliers
+df <-  df  |>  mutate(sobrecarga = case_when(Work_load_Average_day > 272000 ~ 1, 
+                                              TRUE ~ 0))
+```
+```
+
+
+```{r}
+df1 = pedro
+df_indisciplina |> count(Day_of_the_week, sort = TRUE)
+#osdias que as pessoas com indisciplina mais faltam são Tuesday (terça), Wednesday (quarta) e Thrusday (quinta)
+```
+```
+```{r}
+
+```
+
+```{r}
+df |> count(Reason_for_absence, sort = TRUE)
+```
+
+```{r}
+
+
+ggplot(df, aes(x = Reason_for_absence)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Reason_for_absence",
+)
+
+ggsave("Contagem_motivos_abstencao.png")
+```
+
+
+```{r}
+ggplot(df_indisciplina, aes(x = Month_of_absence)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Abstenção por mês",
+  subtitle = "Empregados enquadrados por indisciplina"
+)
+
+ggsave("abstencao_indisciplina_mes.png")
+```
+
+
+```{r}
+ggplot(df_disciplina, aes(x = Month_of_absence)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Abstenção por mês",
+  subtitle = "Empregados com justificativa"
+)
+
+ggsave("abstencao_disciplina_mes.png")
+```
+```{r}
+df$Reason_for_absence <- factor(df$Reason_for_absence, 
+                                          levels = 1:28,
+                                          labels = c("Certain infectious and parasitic diseases", "Neoplasms", "Diseases of the blood", "Endocrine", "Mental and behavioural disorders", "nervous system", 
+                                                     "eye and adnexa", " ear and mastoid process", "circulatory system", "respiratory system", "digestive system", "skin and subcutaneous tissue", "musculoskeletal system", "genitourinary system", "Pregnancy", "perinatal period",
+"Congenital malformations",  "abnormal clinical and laboratory findings", "Injury", " External causes of morbidity and mortality",
+"Factors influencing health status and contact with health services", "patient follow-up", "medical consultation", "blood donation",
+"laboratory examination", "unjustified absence", "physiotherapy", "dental consultation"
+))
+```
+
+
+```{r}
+df_cid_carga <-  df %>%
+  group_by(Reason_for_absence) %>%
+  summarise(
+    Media_Carga_Horaria = mean(Work_load_Average_day, na.rm = TRUE)) |> 
+  arrange(desc(Media_Carga_Horaria))
+
+
+#quais os principais CIDs por pessoas com mais carga horaria de serviço?
+
+# 17 - malformações congenis e anomalias cromossomicas
+# 3 - doenças de sangue
+# 12 - doenças na pele
+# 13 - doenças no sistema osteomuscular
+
+#CIDS que sugerem aspectos de desgaste físico e stress - 
+
+```
+```{r}
+ggplot(df_cid_carga, aes(x = reorder(Reason_for_absence, -Media_Carga_Horaria), y = Media_Carga_Horaria)) +
+  geom_col(fill = "coral") +
+  labs(
+    title = "Média de Carga Horária por Motivo de Ausência",
+    x = "Motivo (CID)",
+    y = "Média de Carga Horária Diária"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave("media_disciplina_carga_horaria.png")
+```
+
+```{r}
+df_tempo_fora <- df %>%
+  group_by(Reason_for_absence) %>%
+  summarise(
+    Media_Tempo_Fora = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(Media_Tempo_Fora))
+
+
+# - sistema circulatorio
+# - neoplasias
+# - doenças na pele
+# - sistema nervoso
+
+```
+
+```{r}
+ggplot(df_tempo_fora, aes(x = reorder(Reason_for_absence, Media_Tempo_Fora), y = Media_Tempo_Fora)) +
+  geom_col(fill = "indianred") +
+  coord_flip() + # Inverte para horizontal, facilitando a leitura dos nomes
+  labs(
+    title = "Média de Horas de Ausência por Motivo",
+    subtitle = "Ordenado pelos motivos com maior tempo de afastamento",
+    x = "Motivo da Ausência (CID)",
+    y = "Média de Horas"
+  ) +
+theme_minimal() +
+  theme(
+    # Alinha título e subtítulo à borda esquerda de todo o gráfico (não só do painel)
+    plot.title.position = "plot", 
+    # Garante que o alinhamento horizontal (hjust) seja 0 (esquerda)
+    plot.title = element_text(hjust = 0, face = "bold"),
+    plot.subtitle = element_text(hjust = 0)
+  )
+
+ggsave("horas_ausencia_por_motivo.png")
+```
+
+
+
+
+
+
+
+```{r}
+skim(df$Distance_from_Residence_to_Work)
+#distancia média é 29
+#1/4 da diatancia é 16
+#1/2 da distancia é 26
+#3/4 da distancia é 49
+
+#perto: 0 até 16 é perto
+#medio: 16 até 48 é médio
+#longe: acima de 48
+
+```
+```{r}
+df %>% count(Son, sort = TRUE)
+#idade média de quem mais falta é 36 anos
+#educação de quem mais falta é ensino médio
+
+skim(df$Service_time)
+df %>% count(Service_time, sort = TRUE)
+
+```
+
+
+```{r}
+
+#quem tem filho passou mais tempo em media fora do serviço
+df %>%
+  group_by(tem_filho) %>%
+  summarise(
+    media_abstencao = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(media_abstencao))
+
+
+```
+
+
+
+```{r}
+ggplot(df, aes(x = tem_filho)) + geom_bar(
+  fill = "steelblue")+
+  labs(
+  title = "Astenção entre quem possui filhos ou não",
+)
+
+
+```
+```{r}
+ggplot(df, aes(x = factor(tem_filho), fill = factor(tem_filho))) + 
+  geom_bar() +
+  labs(
+    title = "Abstenção entre quem possui filhos ou não",
+    x = "Possui filhos? (0 = Não, 1 = Sim)",
+    y = "Total de Ausências",
+    fill = "Tem filho?"
+  ) +
+  theme_minimal() +
+  theme(plot.title.position = "plot")
+
+
+ggsave("abstencao_por_filho.png")
+```
+
+
+```{r}
+
+df %>%
+  group_by(mora_longe) %>%
+  summarise(
+    media_abstencao = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(mora_longe))
+
+#quem mora longe tem em media menos tempo de abstenção do que quem mora perto 
+```
+```{r}
+ggplot(df, aes(x = factor(mora_longe), fill = factor(mora_longe))) + 
+  geom_bar() +
+  labs(
+    title = "Abstenção entre quem mora longe ou não",
+    x = "mora longe do trabalho?? (0 = Não, 1 = Sim)",
+    y = "Total de Ausências",
+    fill = "mora longe?"
+  ) +
+  theme_minimal() +
+  theme(plot.title.position = "plot")
+
+
+ggsave("abstencao_mora_longe.png")
+```
+
+
+```{r}
+
+
+df %>%
+  group_by(nao_tem_graduação) %>%
+  summarise(
+    media_abstencao = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(nao_tem_graduação))
+
+# a media de abstenção de quem nao tem graduação é maior do que a media de quem tem
+
+
+```
+
+
+```{r}
+ggplot(df, aes(x = factor(nao_tem_graduação), fill = factor(nao_tem_graduação))) + 
+  geom_bar() +
+  labs(
+    title = "Abstenção por escolaridade",
+    x = "tem graduação? (1 = Não, 0 = Sim)",
+    y = "Total de Ausências",
+    fill = "tem graduação?"
+  ) +
+  theme_minimal() +
+  theme(plot.title.position = "plot")
+
+
+ggsave("abstencao_escolaridade.png")
+```
+
+
+
+
+```{r}
+
+
+df %>%
+  group_by(nao_tem_graduação) %>%
+  summarise(
+    media_abstencao = mean(Work_load_Average_day, na.rm = TRUE)) |> 
+  arrange(desc(nao_tem_graduação))
+
+# a carga de trabalho entre quem nao tem graduação é maior do que a media de quem tem
+
+```
+
+```{r}
+
+
+```
+
+
+```{r}
+df %>% count(Son, sort = TRUE)
+#idade média de quem mais falta é 36 anos
+#educação de quem mais falta é ensino médio
+
+skim(df$Work_load_Average_day)
+```
+
+```{r}
+
+df %>%
+  group_by(sobrecarga) %>%
+  summarise(
+    media_abstencao = mean(Absenteeism_time_in_hours, na.rm = TRUE)) |> 
+  arrange(desc(sobrecarga))
+
+#media maior entre quem tem sobrecarga, porem melhor corrigir os outliers
+```
+
+```{r}
+#verificar outliers de 
+#Work_load_Average_day
+#Absenteeism_time_in_hours
+#Distance_from_Residence_to_Work
+#Service_time
+
+
+skimr::skim(df)
+summary(df$Work_load_Average_day)
+summary(df$Absenteeism_time_in_hours)
+summary(df$Distance_from_Residence_to_Work)
+summary(df$Service_time)
+
+
+
+```
+
+
+```{r}
+#verificar outliers de Work_load_Average_day
+
+ggplot(df) +
+  aes(x = Work_load_Average_day) +
+  geom_histogram(bins = 30L, color = "red", fill = "#0c4c8a") +
+  
+  theme_minimal()
+
+ggsave("hist_outliers_Work_load_Average_day.png")
+
+ggplot(df) +
+  aes(x = "", y = Work_load_Average_day) +
+  geom_boxplot(fill = "blue") +
+  theme_minimal()
+
+
+ggsave("boxplot_outliers_Work_load_Average_day.png")
+
+
+
+
+```
+
+```{r}
+#verificar outliers de Absenteeism_time_in_hours
+
+ggplot(df) +
+  aes(x = Absenteeism_time_in_hours) +
+  geom_histogram(bins = 30L, color = "red", fill = "#0c4c8a") +
+  
+  theme_minimal()
+
+ggsave("hist_outliers_Absenteeism_time_in_hours.png")
+
+ggplot(df) +
+  aes(x = "", y = Absenteeism_time_in_hours) +
+  geom_boxplot(fill = "blue") +
+  theme_minimal()
+
+
+ggsave("boxplot_outliers_Absenteeism_time_in_hours.png")
+```
+
+
+```{r}
+#verificar outliers de Distance_from_Residence_to_Work
+
+ggplot(df) +
+  aes(x = Distance_from_Residence_to_Work) +
+  geom_histogram(bins = 30L, color = "red", fill = "#0c4c8a") +
+  
+  theme_minimal()
+
+ggsave("hist_outliers_Distance_from_Residence_to_Work.png")
+
+ggplot(df) +
+  aes(x = "", y = Distance_from_Residence_to_Work) +
+  geom_boxplot(fill = "blue") +
+  theme_minimal()
+
+
+ggsave("boxplot_outliers_Distance_from_Residence_to_Work.png")
+
+
+
+
+```
+
+
+```{r}
+#verificar outliers de Service_time
+
+ggplot(df) +
+  aes(x = Service_time) +
+  geom_histogram(bins = 30L, color = "red", fill = "#0c4c8a") +
+  
+  theme_minimal()
+
+ggsave("hist_outliers_Service_time.png")
+
+ggplot(df) +
+  aes(x = "", y = Service_time) +
+  geom_boxplot(fill = "blue") +
+  theme_minimal()
+
+
+ggsave("boxplot_outliers_Service_time.png")
+
+
+```
+
+
+```{r}
+
+#verificar outliers de 
+#Work_load_Average_day - z score
+#Distance_from_Residence_to_Work - box cox
+#Service_time - z score
+
+
+
+#tratamento dos outliers Service_time - z score
+  
+
+# A função boxcox precisa de valores positivos
+# Vamos usar o pacote 'forecast' que facilita a aplicação direta
+
+
+# Encontra o lambda ideal e aplica a transformação
+lambda <- BoxCox.lambda(df$Service_time)
+df$Service_time_boxcox <- BoxCox(df$Service_time, lambda)
+
+# Verifique o resultado
+hist(df$Service_time_boxcox, main = paste("Lambda:", round(lambda, 2)))
+
+
+
+
+
+```
+
+```{r}
+
+#verificar outliers de 
+#Work_load_Average_day - z score
+#Distance_from_Residence_to_Work - box cox - ok
+#Service_time - box cox - ok
+
+
+
+#tratamento dos outliers Distance_from_Residence_to_Work - boxcox
+  
+
+# A função boxcox precisa de valores positivos
+# Vamos usar o pacote 'forecast' que facilita a aplicação direta
+
+
+# Encontra o lambda ideal e aplica a transformação
+lambda <- BoxCox.lambda(df$Distance_from_Residence_to_Work)
+df$Distance_from_Residence_to_Work_boxcox <- BoxCox(df$Distance_from_Residence_to_Work, lambda)
+
+# Verifique o resultado
+hist(df$Distance_from_Residence_to_Work_boxcox, main = paste("Lambda:", round(lambda, 2)))
+
+
+```
+
+```{r}
+#verificar outliers de 
+#Work_load_Average_day - box cox
+#Distance_from_Residence_to_Work - box cox - ok
+#Service_time - box cox - ok
+
+
+
+#tratamento dos outliers Work_load_Average_day - boxcox
+  
+
+# A função boxcox precisa de valores positivos
+# Vamos usar o pacote 'forecast' que facilita a aplicação direta
+
+
+# Encontra o lambda ideal e aplica a transformação
+lambda <- BoxCox.lambda(df$Work_load_Average_day)
+df$Work_load_Average_day_boxcox <- BoxCox(df$Work_load_Average_day, lambda)
+
+# Verifique o resultado
+hist(df$Work_load_Average_day_boxcox, main = paste("Lambda:", round(lambda, 2)))
+
+```
+
+```{r}
+#estimando um modelo de regressao:
+#variavel dependente: horas de absenteismo
+#variaveis independentes: filhos, graduação, distancia do trabalho
+modelo = lm(Absenteeism_time_in_hours ~ tem_filho + Pet + Social_smoker ,  data = df)
+summary(modelo)
+```
+
+```{r}
+#estimando um modelo de regressao:
+#variavel dependente: horas de absenteismo
+#variaveis independentes: filhos, graduação, distancia do trabalho
+modelo = lm(Absenteeism_time_in_hours ~ tem_filho + nao_tem_graduação + Distance_from_Residence_to_Work 
+            + Height,  data = df)
+summary(modelo)
+
+#modelo com altura ferou maior significancia, porém resultado é duvidoso
+```
+```{r}
+df <- df |> 
+  mutate(
+    Reason_for_absence = as.character(Reason_for_absence),
+    Reason_for_absence = coalesce(Reason_for_absence, "não informado"),
+    Reason_for_absence = as.factor(Reason_for_absence)
+  )
+```
+
+
+```{r}
+df$Day_of_the_week <- as.factor(df$Day_of_the_week)
+df$Reason_for_absence <- as.factor(df$Reason_for_absence)
+df$Education <- as.factor(df$Education)
+df$Month_of_absence <-(df$Month_of_absence)
+df$Son <- as.factor(df$Son)
+#Sustituir valores NA de Reason_for_absence por Não informado
+
+# (Opcional) Verificando se deu certo - a saída deve dizer "factor"
+class(df$Reason_for_absence)
+
+```
+```{r}
+
+```
+
+
+```{r}
+modelo = lm(Absenteeism_time_in_hours ~ Son + Reason_for_absence + Day_of_the_week,  data = df)
+
+summary(modelo)
+
+
+```
+
+
+```{r}
+
+#informações sobre os coeficientes do modelo ajustado
+broom::tidy(modelo) |> 
+  knitr::kable()
+```
+
+
+```{r}
+# ajuste do modelo
+broom::glance(modelo)|> 
+  knitr::kable()
+
+```
+
+```{r}
+report::report(modelo) 
+```
+
+
+```{r}
+
+#ajuste
+
+df_adjusted <- df |>
+  dplyr::mutate(
+    valores_ajustados = predict(modelo),
+    residuos = Absenteeism_time_in_hours  - valores_ajustados
+  ) 
+
+```
+
+
+
+```{r}
+#histograma dos residuos
+
+df_adjusted |>
+  ggplot(aes(x = residuos)) +
+  geom_histogram(
+    aes(y = after_stat(density)),
+    fill = "lightblue"
+  ) +
+  geom_density() +
+  theme_light()
+```
+
+```{r}
+car::residualPlot(modelo)
+
+```
+
+```{r}
+#teste de homocedasticidade
+car::ncvTest(modelo)
+
+```
+
+```{r}
+
+#Q-Q plot para normalidade dos resíduos
+car::qqPlot(modelo)
+
+```
+```{r}
+#tabela de regressão
+
+stargazer::stargazer(modelo, type = "text")
+#stargazer::stargazer(modelo, type = "latex")
+
+
+```
+
+```{r}
+
+plot(modelo)
+
+
+```
+
